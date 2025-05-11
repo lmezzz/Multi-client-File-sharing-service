@@ -202,73 +202,150 @@ void acquire_read_lock(FileAccessControl* control) {
         fprintf(stderr, "Error: acquire_read_lock called with NULL control\n");
         return;
     }
+    
+    time_t now;
+    char timestamp[26];
+    time(&now);
+    ctime_r(&now, timestamp);
+    timestamp[24] = '\0';  // Remove newline
+    
+    pthread_t tid = pthread_self();
+    printf("\n[%s] Reader Thread %lu: Attempting to acquire read lock for file: %s\n", timestamp, (unsigned long)tid, control->filename);
+    
     pthread_mutex_lock(&control->mutex);
+    printf("[%s] Reader Thread %lu: Acquired mutex, checking conditions\n", timestamp, (unsigned long)tid);
+    
     // Wait while there's an active writer OR waiting writers (preference to writers)
     while (control->active_writer || control->waiting_writers > 0) {
-        printf("Reader waiting for file: %s (writer active: %d, writers waiting: %d)\n", control->filename, control->active_writer, control->waiting_writers); // Debug
+        printf("[%s] Reader Thread %lu: Waiting - Active writer: %d, Waiting writers: %d\n", 
+               timestamp, (unsigned long)tid, control->active_writer, control->waiting_writers);
         pthread_cond_wait(&control->can_read, &control->mutex);
+        time(&now);
+        ctime_r(&now, timestamp);
+        timestamp[24] = '\0';
+        printf("[%s] Reader Thread %lu: Woke up from wait, rechecking conditions\n", timestamp, (unsigned long)tid);
     }
-    control->active_readers++; // Increment reader count
-    printf("Reader acquired lock for file: %s (readers: %d)\n", control->filename, control->active_readers); // Debug
+    
+    control->active_readers++;
+    printf("[%s] Reader Thread %lu: Successfully acquired read lock. Active readers: %d\n", 
+           timestamp, (unsigned long)tid, control->active_readers);
+    
     pthread_mutex_unlock(&control->mutex);
+    printf("[%s] Reader Thread %lu: Released mutex after acquiring read lock\n", timestamp, (unsigned long)tid);
 }
 
 // Release read access
 void release_read_lock(FileAccessControl* control) {
-     if (control == NULL) {
+    if (control == NULL) {
         fprintf(stderr, "Error: release_read_lock called with NULL control\n");
         return;
-     }
+    }
+    
+    time_t now;
+    char timestamp[26];
+    time(&now);
+    ctime_r(&now, timestamp);
+    timestamp[24] = '\0';  // Remove newline
+    
+    pthread_t tid = pthread_self();
+    printf("\n[%s] Reader Thread %lu: Attempting to release read lock for file: %s\n", timestamp, (unsigned long)tid, control->filename);
+    
     pthread_mutex_lock(&control->mutex);
+    printf("[%s] Reader Thread %lu: Acquired mutex for release\n", timestamp, (unsigned long)tid);
+    
     control->active_readers--;
-     printf("Reader released lock for file: %s (readers: %d)\n", control->filename, control->active_readers); // Debug
+    printf("[%s] Reader Thread %lu: Decremented active readers. New count: %d\n", 
+           timestamp, (unsigned long)tid, control->active_readers);
+    
     // If I was the last reader AND writers are waiting, signal one writer
     if (control->active_readers == 0 && control->waiting_writers > 0) {
-        printf("Last reader signaling writer for file: %s\n", control->filename); // Debug
+        printf("[%s] Reader Thread %lu: Last reader out, signaling waiting writer. Writers waiting: %d\n", 
+               timestamp, (unsigned long)tid, control->waiting_writers);
         pthread_cond_signal(&control->can_write);
     }
+    
     pthread_mutex_unlock(&control->mutex);
+    printf("[%s] Reader Thread %lu: Released mutex after releasing read lock\n", timestamp, (unsigned long)tid);
 }
 
 // Acquire write access
 void acquire_write_lock(FileAccessControl* control) {
-     if (control == NULL) {
+    if (control == NULL) {
         fprintf(stderr, "Error: acquire_write_lock called with NULL control\n");
         return;
-     }
+    }
+    
+    time_t now;
+    char timestamp[26];
+    time(&now);
+    ctime_r(&now, timestamp);
+    timestamp[24] = '\0';  // Remove newline
+    
+    pthread_t tid = pthread_self();
+    printf("\n[%s] Writer Thread %lu: Attempting to acquire write lock for file: %s\n", timestamp, (unsigned long)tid, control->filename);
+    
     pthread_mutex_lock(&control->mutex);
+    printf("[%s] Writer Thread %lu: Acquired mutex, checking conditions\n", timestamp, (unsigned long)tid);
+    
     control->waiting_writers++; // Indicate intention to write
-    printf("Writer waiting for file: %s (readers: %d, writer active: %d, writers waiting: %d)\n", control->filename, control->active_readers, control->active_writer, control->waiting_writers); // Debug
+    printf("[%s] Writer Thread %lu: Registered as waiting writer. Total waiting writers: %d\n", 
+           timestamp, (unsigned long)tid, control->waiting_writers);
+    
     // Wait while there are active readers OR an active writer
     while (control->active_readers > 0 || control->active_writer) {
+        printf("[%s] Writer Thread %lu: Waiting - Active readers: %d, Active writer: %d\n", 
+               timestamp, (unsigned long)tid, control->active_readers, control->active_writer);
         pthread_cond_wait(&control->can_write, &control->mutex);
-         printf("Writer woken up for file: %s (readers: %d, writer active: %d, writers waiting: %d)\n", control->filename, control->active_readers, control->active_writer, control->waiting_writers); // Debug
+        time(&now);
+        ctime_r(&now, timestamp);
+        timestamp[24] = '\0';
+        printf("[%s] Writer Thread %lu: Woke up from wait, rechecking conditions\n", timestamp, (unsigned long)tid);
     }
+    
     control->waiting_writers--; // No longer waiting
     control->active_writer = true; // I am the active writer now
-    printf("Writer acquired lock for file: %s\n", control->filename); // Debug
+    printf("[%s] Writer Thread %lu: Successfully acquired write lock. Remaining waiting writers: %d\n", 
+           timestamp, (unsigned long)tid, control->waiting_writers);
+    
     pthread_mutex_unlock(&control->mutex);
+    printf("[%s] Writer Thread %lu: Released mutex after acquiring write lock\n", timestamp, (unsigned long)tid);
 }
 
 // Release write access
 void release_write_lock(FileAccessControl* control) {
-     if (control == NULL) {
+    if (control == NULL) {
         fprintf(stderr, "Error: release_write_lock called with NULL control\n");
         return;
-     }
+    }
+    
+    time_t now;
+    char timestamp[26];
+    time(&now);
+    ctime_r(&now, timestamp);
+    timestamp[24] = '\0';  // Remove newline
+    
+    pthread_t tid = pthread_self();
+    printf("\n[%s] Writer Thread %lu: Attempting to release write lock for file: %s\n", timestamp, (unsigned long)tid, control->filename);
+    
     pthread_mutex_lock(&control->mutex);
+    printf("[%s] Writer Thread %lu: Acquired mutex for release\n", timestamp, (unsigned long)tid);
+    
     control->active_writer = false; // No longer writing
-    printf("Writer released lock for file: %s\n", control->filename); // Debug
+    printf("[%s] Writer Thread %lu: Marked as no longer active writer\n", timestamp, (unsigned long)tid);
+    
     // Check if writers are waiting first (preference to writers)
     if (control->waiting_writers > 0) {
-         printf("Writer signaling next writer for file: %s\n", control->filename); // Debug
+        printf("[%s] Writer Thread %lu: Signaling next waiting writer. Writers waiting: %d\n", 
+               timestamp, (unsigned long)tid, control->waiting_writers);
         pthread_cond_signal(&control->can_write); // Signal one waiting writer
     } else {
         // Otherwise, signal all waiting readers (broadcast needed as multiple readers can proceed)
-         printf("Writer signaling readers for file: %s\n", control->filename); // Debug
+        printf("[%s] Writer Thread %lu: No waiting writers, broadcasting to all waiting readers\n", timestamp, (unsigned long)tid);
         pthread_cond_broadcast(&control->can_read);
     }
+    
     pthread_mutex_unlock(&control->mutex);
+    printf("[%s] Writer Thread %lu: Released mutex after releasing write lock\n", timestamp, (unsigned long)tid);
 }
 
 // --- End Reader/Writer Lock Implementation ---
@@ -468,14 +545,13 @@ void* UploadFile(void* arg){
     ssize_t bytes_received_net; // Return value from network recv
     ssize_t bytes_received_data;// Return value from data recv
     ssize_t bytes_written_total;
-    ssize_t bytes_received; // Combined variable for recv return
     ssize_t bytes_written_now;
 
     while (true) {
         // 1. Receive chunk size
-        bytes_received = recv(task_args->client_socket, &chunk_size_n, sizeof(int), MSG_WAITALL);
-        if (bytes_received <= 0) { // Handles disconnect (0) or error (<0)
-            if (bytes_received != 0) { // Only print perror on actual error
+        bytes_received_net = recv(task_args->client_socket, &chunk_size_n, sizeof(int), MSG_WAITALL);
+        if (bytes_received_net <= 0) { // Handles disconnect (0) or error (<0)
+            if (bytes_received_net != 0) { // Only print perror on actual error
                  perror("UploadFile: recv chunk size failed");
             }
             // Removed: printf for disconnect
@@ -498,9 +574,9 @@ void* UploadFile(void* arg){
         }
 
         // 2. Receive chunk data
-        bytes_received = recv(task_args->client_socket, recv_buff, chunk_size, MSG_WAITALL);
-         if (bytes_received <= 0) { // Handles disconnect (0) or error (<0)
-             if (bytes_received != 0) { // Only print perror on actual error
+        bytes_received_net = recv(task_args->client_socket, recv_buff, chunk_size, MSG_WAITALL);
+         if (bytes_received_net <= 0) { // Handles disconnect (0) or error (<0)
+             if (bytes_received_net != 0) { // Only print perror on actual error
                  perror("UploadFile: recv chunk data failed");
              }
              // Removed: printf for disconnect
@@ -510,8 +586,8 @@ void* UploadFile(void* arg){
 
         // 3. Write chunk data to file
         bytes_written_total = 0;
-        while (bytes_written_total < bytes_received) {
-            bytes_written_now = write(file_fd, recv_buff + bytes_written_total, bytes_received - bytes_written_total);
+        while (bytes_written_total < bytes_received_net) {
+            bytes_written_now = write(file_fd, recv_buff + bytes_written_total, bytes_received_net - bytes_written_total);
             if (bytes_written_now < 0) {
                 perror("UploadFile: write to file failed");
                 goto upload_error_cleanup; // Critical error, jump to error cleanup
