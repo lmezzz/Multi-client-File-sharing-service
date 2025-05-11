@@ -10,7 +10,7 @@
 #include <arpa/inet.h>
 #include <errno.h> // For error checking
 
-#define CHUNK_SIZE 1024 // Assuming this matches the server
+#define CHUNK_SIZE 128 // Assuming this matches the server
 
 // Function prototypes
 void DownloadFileFromServer(int socket, const char* local_filename);
@@ -289,7 +289,7 @@ int main() {
     
     addr.sin_family = AF_INET;//ipv4
     addr.sin_port = htons(port);
-    inet_pton(AF_INET , "192.168.18.37" , &addr.sin_addr);
+    inet_pton(AF_INET , "172.31.153.78" , &addr.sin_addr);
 
     int connected = connect(sck_d , (struct sockaddr *)&addr , sizeof(addr));
     if (connected < 0)
